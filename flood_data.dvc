@@ -1,0 +1,6 @@
+outs:
+- md5: 0bfeb02ae2055788474c9e9de7956abd.dir
+  size: 2861838
+  nfiles: 3
+  hash: md5
+  path: flood_data
