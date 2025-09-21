@@ -1,4 +1,2 @@
 pandas 
-json
 requests
-sqlite3 
