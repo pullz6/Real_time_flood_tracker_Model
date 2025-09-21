@@ -1,67 +1,87 @@
 import requests
-import pandas as pd
 from datetime import datetime
-import json
-import sqlite3
-from typing import Dict, List, Optional
-import time
 
-# Base URL for the API
-BASE_URL = "https://environment.data.gov.uk/flood-monitoring/id"
-
-def extract_stations() -> List[Dict]:
-    """Extract all monitoring stations"""
-    url = f"{BASE_URL}/stations"
-    try:
-        response = requests.get(url, params={"_limit": 5000})
-        response.raise_for_status()
-        return response.json()['items']
-    except requests.exceptions.RequestException as e:
-        print(f"Error extracting stations: {e}")
-        return []
-
-def extract_station_measures(station_id: str) -> List[Dict]:
-    """Extract measures for a specific station"""
-    url = f"{BASE_URL}/stations/{station_id}/measures"
-    try:
-        response = requests.get(url)
-        response.raise_for_status()
-        return response.json()['items']
-    except requests.exceptions.RequestException as e:
-        print(f"Error extracting measures for station {station_id}: {e}")
-        return []
-
-def extract_latest_readings() -> List[Dict]:
-    """Extract latest readings from all stations"""
-    url = f"{BASE_URL}/readings"
-    try:
-        response = requests.get(url, params={
-            "_limit": 1000,
-            "_sorted": "desc",
-            "today": datetime.now().date().isoformat()
-        })
-        response.raise_for_status()
-        return response.json()['items']
-    except requests.exceptions.RequestException as e:
-        print(f"Error extracting latest readings: {e}")
-        return []
-
-def extract_historic_readings(station_id: str, measure_id: str, 
-                            days: int = 7) -> List[Dict]:
-    """Extract historic readings for a specific measure"""
-    url = f"{BASE_URL}/readings"
-    since_date = (datetime.now() - pd.Timedelta(days=days)).date().isoformat()
+def display_flood_data():
+    """Display flood monitoring data from the UK Environment Agency"""
+    
+    print("UK Environment Agency Flood Monitoring Data")
+    print("=" * 50)
+    print(f"Date: {datetime.now().strftime('%Y-%m-%d %H:%M')}")
+    print()
     
     try:
-        response = requests.get(url, params={
-            "station": station_id,
-            "measure": measure_id,
-            "since": since_date,
-            "_sorted": "asc",
-            "_limit": 10000
-        })
-        response.raise_for_status()
-        return response.json()['items']
-    except requests.exceptions.RequestException as e:
-        print(f"Error extracting historic readings: {e}")
-        return []
+        # Get monitoring stations
+        print("🏞️  MONITORING STATIONS:")
+        print("-" * 30)
+        response = requests.get("https://environment.data.gov.uk/flood-monitoring/id/stations?&_limit=8", timeout=10)
+        
+        if response.status_code == 200:
+            data = response.json()
+            stations = data.get('items', [])
+            
+            for station in stations:
+                name = station.get('label', 'Unknown')
+                river = station.get('riverName', 'Unknown')
+                town = station.get('town', '')
+                status = station.get('status', 'Unknown')
+                print(f"• {name}")
+                print(f"  River: {river}, Town: {town}, Status: {status}")
+                print()
+        else:
+            print("Could not fetch stations data")
+            
+    except Exception as e:
+        print(f"Error fetching stations: {e}")
+    
+    try:
+        # Get latest readings
+        print("📊 LATEST READINGS:")
+        print("-" * 30)
+        response = requests.get("https://environment.data.gov.uk/flood-monitoring/id/readings?&_limit=10", timeout=10)
+        
+        if response.status_code == 200:
+            data = response.json()
+            readings = data.get('items', [])
+            
+            for reading in readings:
+                station_id = reading.get('station', '').split('/')[-1]
+                value = reading.get('value', 'N/A')
+                unit = reading.get('unit', '')
+                param = reading.get('parameterName', reading.get('parameter', 'Unknown'))
+                time = reading.get('dateTime', '')[:16].replace('T', ' ') if reading.get('dateTime') else 'Unknown'
+                print(f"• {station_id}: {value} {unit} ({param})")
+                print(f"  Time: {time}")
+                print()
+        else:
+            print("Could not fetch readings data")
+            
+    except Exception as e:
+        print(f"Error fetching readings: {e}")
+    
+    try:
+        # Get flood warnings
+        print("⚠️  FLOOD WARNINGS:")
+        print("-" * 30)
+        response = requests.get("https://environment.data.gov.uk/flood-monitoring/id/floods?&_limit=5", timeout=10)
+        
+        if response.status_code == 200:
+            data = response.json()
+            floods = data.get('items', [])
+            
+            active_floods = [f for f in floods if f.get('isActive', False)]
+            
+            if not active_floods:
+                print("No active flood warnings")
+            else:
+                for flood in active_floods:
+                    severity = flood.get('severity', 'Unknown')
+                    area = flood.get('floodArea', {}).get('name', 'Unknown area')
+                    print(f"• {severity}: {area}")
+        else:
+            print("Could not fetch flood warnings")
+            
+    except Exception as e:
+        print(f"Error fetching flood warnings: {e}")
+
+# Run the function
+display_flood_data()
