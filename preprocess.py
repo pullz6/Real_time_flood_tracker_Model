@@ -9,3 +9,5 @@ df = pd.read_csv(file_path)
 
 file_path = os.path.join(current_directory, 'flood_data', 'stations.csv')
 df_stations = pd.read_csv(file_path)
+
+df_stations.head()
